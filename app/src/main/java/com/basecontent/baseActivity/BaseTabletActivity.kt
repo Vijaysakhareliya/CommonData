@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.basecontent.utils.isTabletMode
 import com.basecontent.utils.showLog
 
-abstract class BaseTabletActivity : AppCompatActivity() {
+internal abstract class BaseTabletActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
