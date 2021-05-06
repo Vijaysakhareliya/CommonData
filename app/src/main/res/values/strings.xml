@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">CommonData</string>
+
+    <string name="labelCancel">CANCEL</string>
+    <string name="labelOk">OK</string>
+
+</resources>
