@@ -16,6 +16,6 @@ allprojects {
 Add this code
 ```
 dependencies {
-    implementation 'com.github.Vijaysakhareliya:CommonData:Tag'
+    implementation 'com.github.Vijaysakhareliya:CommonData:<latest_version>'
 }
 ```
