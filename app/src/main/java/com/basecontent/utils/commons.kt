@@ -8,6 +8,8 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.ConnectivityManager
+import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
@@ -23,20 +25,30 @@ import android.widget.TimePicker
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.ContextCompat
+import com.basecontent.BuildConfig
 import com.basecontent.R
+import com.bumptech.glide.Glide
+import com.bumptech.glide.Priority
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.bumptech.glide.request.RequestOptions
+import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
 import java.io.File
-import java.text.ParseException
+import java.math.RoundingMode
+import java.net.URLEncoder
+import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
-import com.basecontent.BuildConfig
 
-
-const val GROUP_MODEL = "groupModel"
 
 /**
  * This function used for check device is Tablet or Mobile
@@ -53,10 +65,16 @@ fun Context.isTabletMode(): Boolean {
     }
 }
 
+/**
+ * Check Input string is valid or not and return boolean value
+ */
 fun checkStringValue(stValue: String?): Boolean {
     return stValue != null && stValue.isNotEmpty() && stValue != "null"
 }
 
+/**
+ * Return input string if input string is valid otherwise return second string which is mention in second param
+ */
 fun checkStringValueReturn(stValue: String?, stReturnString: String = ""): String {
     return if (stValue != null && stValue.isNotEmpty() && stValue != "null") {
         stValue
@@ -65,14 +83,23 @@ fun checkStringValueReturn(stValue: String?, stReturnString: String = ""): Strin
     }
 }
 
+/**
+ * For set visible to View
+ */
 fun View.visible() {
     this.visibility = View.VISIBLE
 }
 
+/**
+ * For set gone to View
+ */
 fun View.gone() {
     this.visibility = View.GONE
 }
 
+/**
+ * For set invisible to View
+ */
 fun View.invisible() {
     this.visibility = View.INVISIBLE
 }
@@ -171,6 +198,9 @@ fun getUserType(currentType: String): Int {
     return 0
 }
 
+/**
+ * Find URL from given input string
+ */
 fun pullLinkFromString(text: String?): ArrayList<String> {
     val links = ArrayList<String>()
     if (checkStringValue(text)) {
@@ -191,19 +221,27 @@ fun pullLinkFromString(text: String?): ArrayList<String> {
     return links
 }
 
-
+/**
+ * showLog only debug mode
+ */
 fun showLog(message: String) {
     if (BuildConfig.DEBUG) {
         Log.e("AppName", message)
     }
 }
 
+/**
+ * showLog only debug mode
+ */
 fun showLog(tag: String, message: String) {
     if (BuildConfig.DEBUG) {
         Log.e(tag, message)
     }
 }
 
+/**
+ * remove unnecessary data from number and format number
+ */
 fun String.formatMobileNumber(): String {
     return this.replace("(", "")
         .replace(")", "")
@@ -211,27 +249,24 @@ fun String.formatMobileNumber(): String {
         .replace(" ", "")
 }
 
+/**
+ * Check mobile is valid or not
+ */
 fun isValidMobile(phone: String): Boolean {
     return Patterns.PHONE.matcher(phone).matches()
 }
 
+/**
+ * show Toast for showing message
+ */
 fun Context.showMessage(stMsg: String) = Toast.makeText(this, stMsg, Toast.LENGTH_SHORT).show()
 
-fun String.isValidFormat(format: String?): Boolean {
-    var date: Date? = null
-    try {
-        val sdf = SimpleDateFormat(format, Locale.US)
-        date = sdf.parse(this)
-        if (this != sdf.format(date)) {
-            date = null
-        }
-    } catch (ex: ParseException) {
-//        ex.printStackTrace()
-    } catch (ex: Exception) {
-//        ex.printStackTrace()
-    }
-    return date != null
-}
+/**
+ * show Snackbar for showing message
+ */
+fun View.snackbar(message: CharSequence) = Snackbar
+    .make(this, message, Snackbar.LENGTH_SHORT)
+    .apply { show() }
 
 fun <T> List<T>.toArrayList(): ArrayList<T> {
     return ArrayList(this)
@@ -266,6 +301,7 @@ fun deleteDir(dir: File?): Boolean {
 fun Context.setClickableString(
     mainString: String,
     selectedString: String,
+    colorForSelected : Int,
     onClickText: () -> Unit
 ): SpannableString {
     val ss = SpannableString(mainString)
@@ -279,12 +315,15 @@ fun Context.setClickableString(
         override fun updateDrawState(ds: TextPaint) {
             super.updateDrawState(ds)
             ds.isUnderlineText = true
-            ds.color = ContextCompat.getColor(this@setClickableString, R.color.purple_200)
+            ds.color = ContextCompat.getColor(this@setClickableString, colorForSelected)
         }
     }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     return ss
 }
 
+/**
+ * show Dialog with string type listing
+ */
 fun Context.showListingDialog(
     list: ArrayList<String>,
     selectedData: (Int, String) -> Unit
@@ -299,6 +338,9 @@ fun Context.showListingDialog(
     return alertDialog.create()
 }
 
+/**
+ * show Dialog with multiple selecting string type listing
+ */
 fun Context.showListingDialogMultiSelection(
     list: ArrayList<String>,
     selectedItemsString: String,
@@ -343,118 +385,30 @@ fun Context.showListingDialogMultiSelection(
     return alertDialog.create()
 }
 
-const val ABSENCE_DATE_FORMAT = "EEEE, dd MMM, yyyy"
-const val MEETING_FORMAT = "EEE, dd MMMM, yyyy"
-const val BIRTH_DAY_FORMAT = "dd MMM, yyyy"
-const val SEND_SERVER_FORMAT = "yyyy-MM-dd"
-const val SEND_SERVER_FORMAT_APPOINTMENT_DATE = "yyyy-MM"
-const val DAY_FORMAT = "EEEE"
-const val FROM_SERVER_DATE_FORMAT = "EEE MMM dd HH:mm:ss zzzz yyyy"
-const val INSERT_DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm"
-const val INSERT_DATE_TIME_FORMAT_ABSENCE = "yyyy-MM-dd hh:mm a"
-const val TIME_FORMAT = "HH:mm"
-const val TIME_LOWER_FORMAT = "hh:mm a"
-const val TIME_FORMAT_SECOND_UPPER = "HH:mm"
-const val INSERT_DATE_TIME_FORMAT_SECOND = "EEE, dd MMMM, yyyy HH:mm"
-
-fun Date.getDateForWeekPage(): String {
-    return SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH).format(this)
+/**
+ * Convert Date to String with given format
+ */
+fun Date.convertDateToString(resultDateFormat : String): String {
+    return SimpleDateFormat(resultDateFormat, Locale.ENGLISH).format(this)
 }
 
-fun String.convertStringToDateForStartTime(): Date {
-    val dateFormat = SimpleDateFormat(INSERT_DATE_TIME_FORMAT, Locale.ENGLISH)
+/**
+ * Convert String to Date with given format
+ */
+fun String.convertOneFormatToOtherFormatInDate(inputFormat: String): Date {
+    val dateFormat = SimpleDateFormat(inputFormat, Locale.ENGLISH)
     val date = dateFormat.parse(this)
     return Date(date!!.time)
 }
 
-fun String.convertStringToDateForStartTimeAbsence(): Date {
-    val dateFormat = SimpleDateFormat(INSERT_DATE_TIME_FORMAT_ABSENCE, Locale.ENGLISH)
+/**
+ * Convert Date One format to other format in String
+ */
+fun String.convertOneFormatToOtherFormatInString(inputFormat: String, resultFormat:String): String {
+    val dateFormat = SimpleDateFormat(inputFormat, Locale.ENGLISH)
+    val dateFormatResult = SimpleDateFormat(resultFormat, Locale.ENGLISH)
     val date = dateFormat.parse(this)
-    return Date(date!!.time)
-}
-
-fun String.convertStringToDateForStartTimeSecond(): Date {
-    val dateFormat = SimpleDateFormat(INSERT_DATE_TIME_FORMAT_SECOND, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return Date(date!!.time)
-}
-
-fun convertDateForServer(milliSecond: Long): String {
-    val date = Date(milliSecond)
-    return SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH).format(date)
-}
-
-fun Date.convertDateForAppointmentMonth(): String {
-    return SimpleDateFormat(SEND_SERVER_FORMAT_APPOINTMENT_DATE, Locale.ENGLISH).format(this)
-}
-
-fun Context.convertDateToTimeFormat(milliSecond: Long): String {
-    val mCalendar = Calendar.getInstance()
-    mCalendar.timeInMillis = milliSecond
-    return SimpleDateFormat(TIME_FORMAT, Locale.ENGLISH).format(mCalendar.time)
-}
-
-fun Date.convertDateToShowMeetingFormat(): String {
-    return SimpleDateFormat(MEETING_FORMAT, Locale.ENGLISH).format(this)
-}
-
-fun Date.convertDateForServer(): String {
-    return SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH).format(this)
-}
-
-fun String.convertServerToApp(): String {
-    val dateFormat = SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(MEETING_FORMAT, Locale.ENGLISH).format(date!!)
-}
-
-fun String.convertServerToAppAbsence(): String {
-    val dateFormat = SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(ABSENCE_DATE_FORMAT, Locale.ENGLISH).format(date!!)
-}
-
-fun getCurrentDateWithoutTime(): Date {
-    val date = Date()
-    val dateFormat = SimpleDateFormat(BIRTH_DAY_FORMAT, Locale.ENGLISH)
-    val currentDate = dateFormat.format(date)
-    val dateFormatDate = SimpleDateFormat(BIRTH_DAY_FORMAT, Locale.ENGLISH)
-    return dateFormatDate.parse(currentDate)!!
-}
-
-fun String.convertServerToAppDate(): Date {
-    val dateFormat = SimpleDateFormat(MEETING_FORMAT, Locale.ENGLISH)
-    return dateFormat.parse(this)!!
-}
-
-fun String.convertUpperToLowerTime(): String {
-    val dateFormat = SimpleDateFormat(TIME_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(TIME_LOWER_FORMAT, Locale.ENGLISH).format(date!!)
-}
-
-fun String.convertUpperToLowerTimeSecond(): String {
-    val dateFormat = SimpleDateFormat(TIME_FORMAT_SECOND_UPPER, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(TIME_LOWER_FORMAT, Locale.ENGLISH).format(date!!)
-}
-
-fun String.convertLowerToUpperTimeSecond(): String {
-    val dateFormat = SimpleDateFormat(TIME_LOWER_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(TIME_FORMAT_SECOND_UPPER, Locale.ENGLISH).format(date!!)
-}
-
-fun String.convertDateForServer(): String {
-    val dateFormat = SimpleDateFormat(MEETING_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(SEND_SERVER_FORMAT, Locale.ENGLISH).format(date!!)
-}
-
-fun String.getDayFromDate(): String {
-    val dateFormat = SimpleDateFormat(MEETING_FORMAT, Locale.ENGLISH)
-    val date = dateFormat.parse(this)
-    return SimpleDateFormat(DAY_FORMAT, Locale.ENGLISH).format(date!!)
+    return dateFormatResult.format(Date(date!!.time))
 }
 
 /**
@@ -579,4 +533,98 @@ fun Context.callTimePicker(selectedTime: String, timePicker: (String) -> Unit) {
     ) //True for 24 hour time
     mTimePicker.setTitle(this.resources.getString(R.string.app_name))
     mTimePicker.show()
+}
+
+/**
+ * Send WhatsApp message to particular User and Message
+ */
+fun Context.sendWhatsAppMessage(stMobileNo: String, message: String) {
+    val url = "https://api.whatsapp.com/send?phone=+91${stMobileNo}&text=" + URLEncoder.encode(
+        message,
+        "UTF-8"
+    )
+    val intentWhatsApp = Intent(Intent.ACTION_VIEW)
+    intentWhatsApp.data = Uri.parse(url)
+    startActivity(intentWhatsApp)
+}
+
+/**
+ * For validate email-id
+ *
+ * @return email-id is valid or not
+ */
+fun String.isValidEmail(): Boolean {
+    return !TextUtils.isEmpty(this) && Patterns.EMAIL_ADDRESS.matcher(this).matches()
+}
+
+/**
+ * For validate phone
+ *
+ * @return phone is valid or not
+ */
+fun String.isValidPhone(): Boolean {
+    return !TextUtils.isEmpty(this) && Patterns.PHONE.matcher(this).matches()
+}
+
+/**
+ * isNetworkAvailable - Check if there is a NetworkConnection
+ * @return boolean
+ */
+fun Context.isNetworkAvailable(): Boolean {
+    val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val networkInfo = connectivityManager.activeNetworkInfo
+    return networkInfo != null && networkInfo.isConnected
+}
+
+/**
+ * Get String from strings.xml file using resource
+ */
+fun Context.getStringValue(resourceId: Int): String {
+    return resources.getString(resourceId)
+}
+
+/**
+ * load image
+ */
+fun Context.loadImage(imagePath: String, imageView: AppCompatImageView) {
+    Glide.with(this)
+        .load(imagePath)
+        .diskCacheStrategy(DiskCacheStrategy.ALL)
+        .into(imageView)
+}
+
+fun Context.loadRoundedCornerImage(imagePath: String, imageView: AppCompatImageView) {
+    val requestOptions = RequestOptions()
+        .diskCacheStrategy(DiskCacheStrategy.ALL)
+        .priority(Priority.HIGH)
+
+    Glide.with(this).load(imagePath)
+        .transform(CenterCrop(), RoundedCorners(10))
+        .apply(requestOptions)
+        .transition(DrawableTransitionOptions.withCrossFade())
+        .into(imageView)
+}
+
+/**
+ * value set in decimal format
+ * like 1.1111 to 1.11
+ */
+fun setValueInDecimalFormat(value: Double): String {
+    val df = DecimalFormat("#.##")
+    df.roundingMode = RoundingMode.CEILING
+    return df.format(value)
+}
+
+/**
+ * convert object to string
+ */
+fun convertObjectToString(value: Any): String {
+    return Gson().toJson(value)
+}
+
+/**
+ * get object from string
+ */
+fun <T> convertStringToObject(value: String?, defValue: Class<T>): T {
+    return Gson().fromJson(SharedPrefHelper[value!!, ""], defValue)
 }
